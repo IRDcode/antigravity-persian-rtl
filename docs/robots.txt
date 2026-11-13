@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://irdcode.github.io/antigravity-persian-rtl/sitemap.xml

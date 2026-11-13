@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity Persian RTL — Hardened BiDi Layout, Offline Vazirmatn &amp; Auto-Repatch Launcher</title>
+  <meta name="description" content="Fix broken Persian, Arabic, and mixed RTL/LTR text layout in Google Antigravity Desktop. Offline Vazirmatn variable font, strict 127.0.0.1 origin guard, and Windows auto-repatch launcher.">
+  <meta name="keywords" content="Antigravity Persian RTL, Google Antigravity RTL, Antigravity Farsi fix, راست‌چین کردن آنتی‌گراویتی, فونت وزیرمتن آنتی‌گراویتی, BiDi isolate Electron, Antigravity Desktop RTL">
+  <link rel="canonical" href="https://irdcode.github.io/antigravity-persian-rtl/">
+  <link rel="alternate" hreflang="en" href="https://irdcode.github.io/antigravity-persian-rtl/#english">
+  <link rel="alternate" hreflang="fa" href="https://irdcode.github.io/antigravity-persian-rtl/#persian">
+  <link rel="alternate" hreflang="x-default" href="https://irdcode.github.io/antigravity-persian-rtl/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Antigravity Persian RTL — Hardened BiDi Patcher &amp; Auto-Repatch Launcher">
+  <meta property="og:description" content="Offline Vazirmatn font, paragraph-level BiDi isolation (code &amp; terminal stay LTR), strict security hardening, and exact or strip-fallback uninstall for Google Antigravity Desktop.">
+  <meta property="og:url" content="https://irdcode.github.io/antigravity-persian-rtl/">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#08080A">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Antigravity Persian RTL",
+        "operatingSystem": "Windows 10, Windows 11, macOS, Linux",
+        "applicationCategory": "DeveloperApplication",
+        "softwareVersion": "1.1.0",
+        "license": "https://github.com/IRDcode/antigravity-persian-rtl/blob/main/LICENSE",
+        "codeRepository": "https://github.com/IRDcode/antigravity-persian-rtl",
+        "url": "https://irdcode.github.io/antigravity-persian-rtl/",
+        "description": "Hardened offline Persian and Arabic RTL bidirectional layout engine, bundled Vazirmatn variable typeface, and auto-repatch Windows launcher for Google Antigravity Desktop.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does the RTL patch disappear when Google Antigravity Desktop updates?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Official Antigravity updates replace resources/app.asar. Launching through Launch-Antigravity-RTL.bat checks dist/utils.js integrity first and automatically re-applies the hardened RTL patch whenever an official update overwrote it."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Antigravity Persian RTL make network calls or collect telemetry?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Vazirmatn-Variable.woff2 is bundled inside app.asar, GitHub update polls and shell.openExternal calls are removed, config writes to ~/.antigravity-rtl.json are sanitized, and injection runs strictly on http(s)://127.0.0.1 origins."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I revert Antigravity Desktop back to the original unpatched app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Run Restore-Antigravity-Original.bat (or npm run restore). It restores the byte-identical app.asar.bak backup with SHA-256 verification, or strips the injected block and offline font automatically via strip_fallback even if the backup file was deleted."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "آیا با آپدیت نسخه رسمی آنتی‌گراویتی دسکتاپ، راست‌به‌چپ پاک می‌شود؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "آپدیت‌های رسمی فایل app.asar را جایگزین می‌کنند؛ اما اگر برنامه را با Launch-Antigravity-RTL.bat باز کنید، لانچر قبل از اجرا وضعیت پچ را بررسی کرده و روی نسخه جدید خودکار دوباره اعمال می‌کند."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #08080A;
+      --surface: #0E0E12;
+      --surface-2: #14141A;
+      --border: #26262E;
+      --text: #F5F4F2;
+      --muted: #A1A1AA;
+      --accent: #FF9E45;
+      --accent-soft: rgba(255, 158, 69, 0.14);
+      --ok: #34D399;
+      --bad: #EF4444;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    nav .brand {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    nav .links {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .hero {
+      padding: 40px 0 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .eyebrow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: clamp(2rem, 4.4vw, 3.1rem);
+      line-height: 1.15;
+      margin: 0 0 14px;
+      font-weight: 800;
+    }
+    .lead {
+      font-size: 1.08rem;
+      color: #D4D4DC;
+      max-width: 68ch;
+      margin: 0 0 22px;
+    }
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #08080A;
+      border-color: var(--accent);
+    }
+    section {
+      padding: 32px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    h2 {
+      font-size: 1.45rem;
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+    h3 {
+      font-size: 1.05rem;
+      margin: 0 0 8px;
+      color: var(--accent);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 16px;
+    }
+    @media (max-width: 640px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .card p { margin: 0; color: var(--muted); font-size: 0.96rem; }
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .sample-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 1.02rem;
+    }
+    .sample-bad { border-color: rgba(239, 68, 68, 0.45); }
+    .sample-ok  { border-color: rgba(52, 211, 153, 0.45); }
+    .badge {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .badge-bad { background: rgba(239,68,68,0.14); color: #FCA5A5; }
+    .badge-ok  { background: rgba(52,211,153,0.14); color: #6EE7B7; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      direction: ltr;
+      unicode-bidi: isolate;
+    }
+    :not(pre) > code {
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 0.88em;
+      white-space: nowrap;
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      color: #E4E4E7;
+    }
+    .rtl {
+      direction: rtl;
+      text-align: right;
+    }
+    .faq-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+    .faq-item h3 { margin-bottom: 6px; font-size: 1rem; color: var(--text); }
+    .faq-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    footer {
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav aria-label="Primary navigation">
+      <span class="brand">antigravity-persian-rtl</span>
+      <div class="links">
+        <a href="#english">English</a>
+        <a href="#persian" dir="rtl" lang="fa">فارسی</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/IRDcode/antigravity-persian-rtl">GitHub Repo</a>
+      </div>
+    </nav>
+
+    <header class="hero" id="english">
+      <div class="eyebrow">IRDCODE · GOOGLE ANTIGRAVITY DESKTOP RTL PATCHER</div>
+      <h1>Clean Persian &amp; Arabic RTL in Google Antigravity Desktop</h1>
+      <p class="lead">
+        Hardened bidirectional text isolation (<code>unicode-bidi: isolate</code>), bundled offline <strong>Vazirmatn Variable</strong> typography, zero network telemetry, and an auto-repatch Windows launcher that survives official Antigravity updates.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/IRDcode/antigravity-persian-rtl">View on GitHub</a>
+        <a class="btn" href="https://github.com/IRDcode/antigravity-persian-rtl/blob/main/README.fa.md">راهنمای فارسی (README.fa.md)</a>
+      </div>
+    </header>
+
+    <section aria-labelledby="compare-heading">
+      <h2 id="compare-heading">Why Bidirectional Isolation Matters</h2>
+      <div class="compare">
+        <div class="sample-box sample-bad" dir="ltr">
+          <span class="badge badge-bad">BEFORE · NAIVE FIRST-CHAR (LTR)</span>
+          <p><code>src/patcher.mjs</code> رو بررسی کردم و خطای <code>EBUSY</code> برطرف شد (تست‌ها پاس شدند).</p>
+        </div>
+        <div class="sample-box sample-ok" dir="rtl">
+          <span class="badge badge-ok">AFTER · CLEAN-ROOM BIDI + VAZIRMATN</span>
+          <p><code>src/patcher.mjs</code> رو بررسی کردم و خطای <code>EBUSY</code> برطرف شد (تست‌ها پاس شدند).</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="features-heading">
+      <h2 id="features-heading">Architecture &amp; Safety Controls</h2>
+      <div class="grid-2">
+        <article class="card">
+          <h3>Inline-Code-Aware BiDi + Restore</h3>
+          <p>Clean-room DOM text walker skips leading <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, URLs, and <code>.monaco-editor</code> while saving original <code>dir</code> attributes so <code>Alt+R</code> reverts cleanly.</p>
+        </article>
+        <article class="card">
+          <h3>Strict 127.0.0.1 Origin Guard</h3>
+          <p>Both <code>dom-ready</code> injection and <code>console-message</code> persistence enforce <code>^https?://127\.0\.0\.1:\d+</code>, sanitize <code>~/.antigravity-rtl.json</code>, and remove GitHub fetches.</p>
+        </article>
+        <article class="card">
+          <h3>Auto-Repatch Windows Launcher</h3>
+          <p><code>Launch-Antigravity-RTL.bat</code> verifies <code>app.asar</code> on every launch and automatically re-applies RTL after official Antigravity updates.</p>
+        </article>
+        <article class="card">
+          <h3>Exact Backup &amp; Strip Fallback</h3>
+          <p><code>Restore-Antigravity-Original.bat</code> restores byte-identical <code>app.asar.bak</code> (SHA-256 verified) or cleanly strips injected code even if <code>.bak</code> was deleted.</p>
+        </article>
+      </div>
+      <pre>npm install --omit=dev
+npm run doctor    # Non-destructive check
+npm run patch     # Apply hardened RTL patch
+npm run restore   # Revert cleanly to original app.asar</pre>
+    </section>
+
+    <section id="persian" lang="fa" class="rtl" aria-labelledby="fa-heading">
+      <h2 id="fa-heading">حل مشکل راست‌به‌چپ فارسی و فونت در Google Antigravity Desktop</h2>
+      <p style="color:#D4D4DC">
+        اگر هنگام استفاده از نسخه دسکتاپ آنتی‌گراویتی، پیام‌های ترکیبی فارسی و انگلیسی به‌هم می‌ریزند، علامت نقطه به اول خط می‌پرد و کدها با متن فارسی تداخل دارند، کافی است مخزن را دریافت کرده و فایل <code>Launch-Antigravity-RTL.bat</code> را اجرا کنید.
+      </p>
+      <div class="grid-2">
+        <article class="card">
+          <h3>نصب و آپدیت بدون دردسر</h3>
+          <p>فایل <code>Launch-Antigravity-RTL.bat</code> در اولین اجرا پچ را اعمال کرده و بعد از هر آپدیت رسمی برنامه به‌صورت خودکار <code>app.asar</code> را دوباره راست‌به‌چپ می‌کند.</p>
+        </article>
+        <article class="card">
+          <h3>کاملاً آفلاین و قابل بازگشت</h3>
+          <p>فونت وزیرمتن درون برنامه قرار می‌گیرد، هیچ درخواستی به اینترنت ارسال نمی‌شود و هر زمان بخواهید با <code>Restore-Antigravity-Original.bat</code> به نسخه رسمی برمی‌گردید.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="faq" aria-labelledby="faq-heading">
+      <h2 id="faq-heading">Frequently Asked Questions / سوالات متداول</h2>
+      <div class="faq-item">
+        <h3>Does the RTL patch disappear when Google Antigravity Desktop updates?</h3>
+        <p>Official Antigravity updates replace <code>resources/app.asar</code>. Launching through <code>Launch-Antigravity-RTL.bat</code> checks <code>dist/utils.js</code> integrity first and automatically re-applies the hardened RTL patch whenever an official update overwrote it.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Does Antigravity Persian RTL make network calls or collect telemetry?</h3>
+        <p>No. <code>Vazirmatn-Variable.woff2</code> is bundled inside <code>app.asar</code>, GitHub update polls and <code>shell.openExternal</code> calls are removed, config writes to <code>~/.antigravity-rtl.json</code> are sanitized, and injection runs strictly on <code>http(s)://127.0.0.1</code> origins.</p>
+      </div>
+      <div class="faq-item">
+        <h3>How do I revert Antigravity Desktop back to the original unpatched app?</h3>
+        <p>Run <code>Restore-Antigravity-Original.bat</code> (or <code>npm run restore</code>). It restores the byte-identical <code>app.asar.bak</code> backup with SHA-256 verification, or strips the injected block and offline font automatically via <code>strip_fallback</code> even if the backup file was deleted.</p>
+      </div>
+      <div class="faq-item rtl" lang="fa">
+        <h3>آیا با آپدیت نسخه رسمی آنتی‌گراویتی دسکتاپ، راست‌به‌چپ پاک می‌شود؟</h3>
+        <p>آپدیت‌های رسمی فایل <code>app.asar</code> را جایگزین می‌کنند؛ اما اگر برنامه را با <code>Launch-Antigravity-RTL.bat</code> باز کنید، لانچر قبل از اجرا وضعیت پچ را بررسی کرده و روی نسخه جدید خودکار دوباره اعمال می‌کند.</p>
+      </div>
+    </section>
+
+    <footer>
+      <span>MIT License · Clean-room BiDi by <a href="https://github.com/IRDcode">IRDcode</a> · Offline Vazirmatn (OFL-1.1)</span>
+      <span>Verified on Google Antigravity Desktop v2.31.2 (Windows)</span>
+    </footer>
+  </div>
+</body>
+</html>
