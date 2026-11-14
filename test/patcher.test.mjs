@@ -7,6 +7,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import * as asar from '@electron/asar';
 import {
     PATCH_MARKER,
@@ -178,7 +179,7 @@ test('error diagnostics: ASAR_NOT_FOUND, ANCHOR_NOT_FOUND, CORRUPT_ASAR, directo
 
         let cliOut = '';
         try {
-            execFileSync(process.execPath, [new URL('../src/patcher.mjs', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'), 'bogus', '--json'], { encoding: 'utf8', stdio: 'pipe' });
+            execFileSync(process.execPath, [fileURLToPath(new URL('../src/patcher.mjs', import.meta.url)), 'bogus', '--json'], { encoding: 'utf8', stdio: 'pipe' });
             assert.fail('Expected invalid command to fail');
         } catch (cliErr) {
             cliOut = cliErr.stderr || cliErr.stdout || '';
@@ -230,7 +231,7 @@ test('security audit: origin guard, config sanitization, zero network/openExtern
             }
         };
 
-        const srcDir = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', 'src');
+        const srcDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
         const mod = { exports: {} };
         new Function('module', 'require', '__dirname', utilsCode)(mod, createRequire(import.meta.url), srcDir);
         mod.exports(win, 'http://127.0.0.1:4000/');
