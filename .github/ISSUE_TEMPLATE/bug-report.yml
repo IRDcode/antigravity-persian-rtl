@@ -6,7 +6,7 @@ body:
     id: antigravity_version
     attributes:
       label: Antigravity Desktop version
-      placeholder: e.g. 2.31.2
+      placeholder: e.g. 2.32.0
     validations:
       required: true
   - type: input

@@ -10,7 +10,7 @@
     const PREV_DIR_ATTR = 'data-ag-rtl-prev';
     const UI_CONTAINER_SELECTOR = '[data-ag-rtl-ui]';
 
-    const CODE_SKIP_SELECTOR = 'pre, code, kbd, samp, .monaco-editor, .xterm, .terminal, .cursor-edit';
+    const CODE_SKIP_SELECTOR = 'pre, code, kbd, samp, .monaco-editor, .xterm, .terminal, .cursor-edit, .font-mono';
     const CODE_TAGS = new Set(['PRE', 'CODE', 'KBD', 'SAMP']);
     const PROSE_SELECTOR = [
         '.prose > *',
@@ -33,7 +33,7 @@
     const STRIP_NEUTRAL_RE = /[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
     const RTL_CHAR_RE = /[\u0591-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
     const STRONG_CHAR_RE = /[A-Za-z\u0591-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
-    const LEADING_URLS_OR_PATHS_RE = /^(?:(?:https?:\/\/\S+|(?:[A-Za-z]:\\|\/)[^\s\u0600-\u06ff]+)\s*)+/;
+    const LEADING_URLS_OR_PATHS_RE = /^(?:(?:https?:\/\/\S+|(?:[A-Za-z]:\\|\/)[^\s\u0600-\u06ff]+|[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)+)\s*)+/;
 
     function applyManagedDir(el, nextDir) {
         if (!el || el.nodeType !== 1) return;

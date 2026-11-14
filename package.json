@@ -1,6 +1,6 @@
 {
   "name": "antigravity-persian-rtl",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Hardened offline Persian & Arabic RTL patcher and auto-repatch Windows launcher for Google Antigravity Desktop.",
   "keywords": [

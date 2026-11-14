@@ -26,7 +26,8 @@ Google Antigravity Desktop renders chat responses, markdown lists, and composer 
 
 Implemented from scratch in `src/bidi-engine.js` and `src/runtime-patch.js` with zero external runtime code dependencies:
 
-- **Inline-Code & URL-Aware Direction Detection:** Skips nested `<code>`, `<pre>`, `<kbd>`, `<samp>`, `.monaco-editor`, `.xterm`, `.terminal`, and leading URLs/file paths when resolving paragraph direction — so a Persian message starting with `` `src/patcher.mjs` رو بررسی کردم `` stays **`dir="rtl"`** instead of collapsing to LTR.
+- **Inline-Code & URL-Aware Direction Detection:** Skips nested `<code>`, `<pre>`, `<kbd>`, `<samp>`, `.font-mono`, `.monaco-editor`, `.xterm`, `.terminal`, and leading URLs/relative file paths when resolving paragraph direction — paired with explicit `unicode-bidi: isolate !important` on managed blocks so a Persian message starting with `` `src/patcher.mjs` رو بررسی کردم `` or `src/patcher.mjs` stays **`dir="rtl"`** with clean punctuation.
+- **BaseWindow & WebContentsView Compatibility (`v2.32+`):** Resolves `hubContents` when present on modern `BaseWindow` builds (`v2.32.0`) and falls back to `win.webContents` (`v2.31.x`), preserving identical `127.0.0.1` origin checks.
 - **Non-Destructive Toggle (`Alt+R`):** Tracks managed elements via `data-ag-rtl-managed` and saves pre-existing `dir` values in `data-ag-rtl-prev`, so toggling RTL off restores Antigravity's native attributes untouched.
 - **Scoped Typography Injection:** Loads bundled `Vazirmatn-Variable.woff2` (`@font-face unicode-range` restricted to Arabic/Persian blocks) on chat/prose/composer rules only, preserving UI icon and code fonts.
 - **Batched Incremental Observer & Live Sliders:** Schedules DOM updates over `requestAnimationFrame` + dirty-root batching without layout-thrashing `window.resize` events, paired with live `Line Height` (`1.0–3.0×`) and `Font Size` (`11–22 px`) value readouts.
@@ -35,7 +36,7 @@ Implemented from scratch in `src/bidi-engine.js` and `src/runtime-patch.js` with
 
 ## Requirements
 
-- **Google Antigravity Desktop** (verified live on **Antigravity Desktop v2.31.2**, Windows 10/11 x64)
+- **Google Antigravity Desktop** (verified on **Antigravity Desktop v2.31.2** live UI and **v2.32.0** `app.asar` ASAR/VM checks, Windows 10/11 x64)
 - **Node.js `>= 20.0.0`** (`winget install OpenJS.NodeJS.LTS` or [nodejs.org](https://nodejs.org/))
 - First run installs the single production dependency (`@electron/asar`) automatically if missing. No runtime internet connection is ever required after installation.
 
@@ -79,7 +80,7 @@ Settings persist locally to `~/.antigravity-rtl.json`.
 Auto-detection searches standard Antigravity Desktop paths on Windows (`%LOCALAPPDATA%\Programs\antigravity\resources\app.asar`, `%LOCALAPPDATA%\Programs\Antigravity\...`, `%PROGRAMFILES%\...`), macOS (`/Applications/Antigravity.app/Contents/Resources/app.asar`, `~/Applications/...`), and Linux (`/opt/Antigravity/...`, `/opt/antigravity/...`, `/usr/lib/antigravity/...`, `~/.local/share/antigravity/...`). You can also pass `--path <app.asar|install-dir>` explicitly.
 
 > [!NOTE]
-> The `.bat` and PowerShell launcher wrappers are Windows-specific. On macOS and Linux, use the Node CLI commands below. End-to-end live application verification in this release was performed on Windows (`Antigravity v2.31.2`); macOS and Linux support the Node CLI path resolution via synthetic ASAR test coverage.
+> The `.bat` and PowerShell launcher wrappers are Windows-specific. On macOS and Linux, use the Node CLI commands below. End-to-end verification in this release covers **Antigravity v2.31.2** (live UI) and **v2.32.0** (`BaseWindow`/`hubContents` real `app.asar` repack + `node:vm` tests) on Windows; macOS and Linux support the Node CLI path resolution via synthetic ASAR test coverage.
 
 ```bash
 npm install --omit=dev

@@ -250,6 +250,8 @@ test('security audit: origin guard, config sanitization, zero network/openExtern
         assert.ok(injectedScript.includes('"enFont":"Inter"'));
         assert.ok(injectedScript.includes('"lh":"1.6"'));
         assert.ok(injectedScript.includes('"fs":"16"'));
+        assert.ok(injectedScript.includes('[data-ag-rtl-managed="1"][dir="rtl"]'));
+        assert.ok(injectedScript.includes('unicode-bidi: isolate !important;'));
         assert.ok(!injectedScript.includes('onerror=alert'));
         assert.ok(!injectedScript.includes('evilKey'));
 
@@ -265,6 +267,34 @@ test('security audit: origin guard, config sanitization, zero network/openExtern
         saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
         assert.equal(saved.fs, '20');
         assert.equal(saved.forceRTL, true);
+
+        // 4. Antigravity v2.32+ BaseWindow + WebContentsView (hubContents without win.webContents).
+        const hubRoot = path.join(root, 'basewindow');
+        fs.mkdirSync(hubRoot);
+        const hubAsar = await createSampleAsar(
+            hubRoot,
+            'module.exports = (win, url, hubContents) => {\n    void win.loadURL(url);\n    return win;\n};\n'
+        );
+        patchAsar(hubAsar);
+        const hubUtilsCode = asar.extractFile(hubAsar, 'dist/utils.js').toString('utf8');
+        const hubHandlers = {};
+        let hubUrl = 'https://evil.example/hub';
+        let hubInjected = null;
+        const hubWin = { loadURL() {} };
+        const hubContents = {
+            on: (ev, fn) => { hubHandlers[ev] = fn; },
+            getURL: () => hubUrl,
+            executeJavaScript: (code) => { hubInjected = code; return Promise.resolve(); }
+        };
+        const hubMod = { exports: {} };
+        new Function('module', 'require', '__dirname', hubUtilsCode)(hubMod, createRequire(import.meta.url), srcDir);
+        hubMod.exports(hubWin, 'http://127.0.0.1:4001/', hubContents);
+        hubHandlers['dom-ready']();
+        assert.equal(hubInjected, null);
+        hubUrl = 'http://127.0.0.1:4001/';
+        hubHandlers['dom-ready']();
+        assert.ok(hubInjected);
+        assert.doesNotThrow(() => new vm.Script(hubInjected));
     } finally {
         process.env.HOME = prevHome;
         process.env.USERPROFILE = prevUserProfile;
@@ -313,6 +343,11 @@ test('bidi-engine clean-room controller: inline-code-start Persian -> RTL, URL s
         makeEl('A', 'https://github.com/IRDcode'),
         makeText(' این مخزن متن‌باز فارسی است.')
     ]);
+    const pRelPathStartFa = makeEl('P', 'src/patcher.mjs را بررسی کردم و خطای EBUSY برطرف شد.');
+    const pMonoSpanFa = makeEl('P', [
+        makeEl('SPAN', 'src/patcher.mjs', { matchesSel: '.font-mono' }),
+        makeText(' باز شد.')
+    ]);
     const pEn = makeEl('P', 'This is an English paragraph with فارسی inside.');
     const pNativeLtr = makeEl('P', 'تست بازگشت غیرمخرب', { initialDir: 'ltr' });
     const codeEl = makeEl('CODE', 'const فارسی = 1;');
@@ -320,7 +355,7 @@ test('bidi-engine clean-room controller: inline-code-start Persian -> RTL, URL s
     const inputFa = makeEl('P', 'سلام دنیا');
     const inputEmpty = makeEl('P', '   ', { initialDir: 'rtl' });
 
-    const allBlocks = [pFa, pInlineCodeStartFa, pUrlStartFa, pEn, pNativeLtr, codeEl, monacoEl];
+    const allBlocks = [pFa, pInlineCodeStartFa, pUrlStartFa, pRelPathStartFa, pMonoSpanFa, pEn, pNativeLtr, codeEl, monacoEl];
     const allInputs = [inputFa, inputEmpty];
 
     const sandbox = {
@@ -346,6 +381,8 @@ test('bidi-engine clean-room controller: inline-code-start Persian -> RTL, URL s
     assert.equal(pFa.getAttribute('dir'), 'rtl');
     assert.equal(pInlineCodeStartFa.getAttribute('dir'), 'rtl', 'Inline code at start must NOT force LTR');
     assert.equal(pUrlStartFa.getAttribute('dir'), 'rtl', 'Leading URL must NOT force LTR');
+    assert.equal(pRelPathStartFa.getAttribute('dir'), 'rtl', 'Leading relative path must NOT force LTR');
+    assert.equal(pMonoSpanFa.getAttribute('dir'), 'rtl', '.font-mono token at start must NOT force LTR');
     assert.equal(pEn.getAttribute('dir'), 'ltr');
     assert.equal(pNativeLtr.getAttribute('dir'), 'rtl');
     assert.equal(codeEl.getAttribute('dir'), null);
@@ -366,7 +403,7 @@ test('bidi-engine clean-room controller: inline-code-start Persian -> RTL, URL s
     assert.equal(codeEl.getAttribute('dir'), null);
 });
 
-test('auto-upgrade: legacy v1.0 HARDENED block upgrades cleanly to clean-room v1.1 via --if-needed', async () => {
+test('auto-upgrade: legacy v1.0 HARDENED and v1.1 clean-room blocks upgrade cleanly to v1.2 via --if-needed', async () => {
     const root = tmpDir();
     try {
         const legacyPayload = [
@@ -378,7 +415,9 @@ test('auto-upgrade: legacy v1.0 HARDENED block upgrades cleanly to clean-room v1
             '    return win;',
             '};'
         ].join('\n');
-        const asarPath = await createSampleAsar(root, legacyPayload);
+        const legacyDir = path.join(root, 'v10');
+        fs.mkdirSync(legacyDir);
+        const asarPath = await createSampleAsar(legacyDir, legacyPayload);
         assert.equal(getPatchStatus(asarPath).state, 'legacy_or_stale');
 
         const upgrade = patchAsar(asarPath, { ifNeeded: true });
@@ -392,6 +431,26 @@ test('auto-upgrade: legacy v1.0 HARDENED block upgrades cleanly to clean-room v1
         const res = restoreAsar(asarPath);
         assert.equal(res.restored, true);
         assert.equal(getPatchStatus(asarPath).state, 'unpatched');
+
+        const v11Payload = [
+            'module.exports = (win, url) => {',
+            '    /* ANTIGRAVITY PERSIAN RTL v1.1 */',
+            '    /* simulated v1.1 clean-room runtime */',
+            '    void win.loadURL(url);',
+            '    /* END ANTIGRAVITY PERSIAN RTL */',
+            '    return win;',
+            '};'
+        ].join('\n');
+        const v11Dir = path.join(root, 'v11');
+        fs.mkdirSync(v11Dir);
+        const v11Asar = await createSampleAsar(v11Dir, v11Payload);
+        assert.equal(getPatchStatus(v11Asar).state, 'legacy_or_stale');
+        const up12 = patchAsar(v11Asar, { ifNeeded: true });
+        assert.equal(up12.changed, true);
+        assert.equal(getPatchStatus(v11Asar).state, 'patched');
+        const v12Utils = asar.extractFile(v11Asar, 'dist/utils.js').toString('utf8');
+        assert.ok(v12Utils.includes(PATCH_MARKER));
+        assert.ok(!v12Utils.includes('ANTIGRAVITY PERSIAN RTL v1.1'));
     } finally {
         fs.rmSync(root, { recursive: true, force: true });
     }

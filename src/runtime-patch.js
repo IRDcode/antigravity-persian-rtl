@@ -1,4 +1,4 @@
-/* ANTIGRAVITY PERSIAN RTL v1.1 */
+/* ANTIGRAVITY PERSIAN RTL v1.2 */
 ((win) => {
     const fs = require('fs');
     const os = require('os');
@@ -63,35 +63,40 @@
         return typeof rawUrl === 'string' && LOCAL_ORIGIN_RE.test(rawUrl);
     }
 
-    win.webContents.on('console-message', (eventOrDetails, ...args) => {
-        if (!isLocalAppUrl(win.webContents.getURL())) return;
-        const msg = (args.length === 0 && eventOrDetails && typeof eventOrDetails === 'object')
-            ? eventOrDetails.message
-            : args[1];
-        if (typeof msg !== 'string' || !msg.startsWith(SAVE_PREFIX)) return;
+    const targetContents = (typeof hubContents !== 'undefined' && hubContents)
+        ? hubContents
+        : (win && win.webContents);
 
-        try {
-            const patch = sanitizeSettings(JSON.parse(msg.slice(SAVE_PREFIX.length)));
-            const file = settingsFilePath();
-            let current = {};
-            if (fs.existsSync(file)) {
-                try {
-                    current = sanitizeSettings(JSON.parse(fs.readFileSync(file, 'utf8')));
-                } catch (_) {}
-            }
-            const next = { ...BASE_CONFIG, ...current, ...patch };
-            fs.writeFileSync(file, JSON.stringify(next, null, 2));
-        } catch (_) {}
-    });
+    if (targetContents && typeof targetContents.on === 'function') {
+        targetContents.on('console-message', (eventOrDetails, ...args) => {
+            if (!isLocalAppUrl(targetContents.getURL())) return;
+            const msg = (args.length === 0 && eventOrDetails && typeof eventOrDetails === 'object')
+                ? eventOrDetails.message
+                : args[1];
+            if (typeof msg !== 'string' || !msg.startsWith(SAVE_PREFIX)) return;
 
-    win.webContents.on('dom-ready', () => {
-        if (!isLocalAppUrl(win.webContents.getURL())) return;
-        try {
-            const fontFile = path.join(__dirname, 'Vazirmatn-Variable.woff2');
-            const fontB64 = fs.readFileSync(fontFile).toString('base64');
-            const initialCfg = readSettings();
+            try {
+                const patch = sanitizeSettings(JSON.parse(msg.slice(SAVE_PREFIX.length)));
+                const file = settingsFilePath();
+                let current = {};
+                if (fs.existsSync(file)) {
+                    try {
+                        current = sanitizeSettings(JSON.parse(fs.readFileSync(file, 'utf8')));
+                    } catch (_) {}
+                }
+                const next = { ...BASE_CONFIG, ...current, ...patch };
+                fs.writeFileSync(file, JSON.stringify(next, null, 2));
+            } catch (_) {}
+        });
 
-            win.webContents.executeJavaScript(__BIDI_ENGINE__ + `(() => {
+        targetContents.on('dom-ready', () => {
+            if (!isLocalAppUrl(targetContents.getURL())) return;
+            try {
+                const fontFile = path.join(__dirname, 'Vazirmatn-Variable.woff2');
+                const fontB64 = fs.readFileSync(fontFile).toString('base64');
+                const initialCfg = readSettings();
+
+                targetContents.executeJavaScript(__BIDI_ENGINE__ + `(() => {
                 if (window.__agPersianRtlMounted) return;
                 window.__agPersianRtlMounted = true;
 
@@ -345,12 +350,12 @@
                             : 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
 
                         const forceBlock = (state.enabled && state.forceRtl) ? \`
-                            .prose > *:not(pre):not(code),
-                            [data-testid="chat-message"] > *:not(pre):not(code),
-                            .markdown-body > *:not(pre):not(code),
-                            .leading-relaxed > *:not(pre):not(code),
+                            .prose > *:not(pre):not(code):not(kbd):not(samp),
+                            [data-testid="chat-message"] > *:not(pre):not(code):not(kbd):not(samp),
+                            .markdown-body > *:not(pre):not(code):not(kbd):not(samp),
+                            .leading-relaxed > *:not(pre):not(code):not(kbd):not(samp),
                             [data-testid="user-input-step"],
-                            [data-testid="user-input-step"] > *:not(pre):not(code),
+                            [data-testid="user-input-step"] > *:not(pre):not(code):not(kbd):not(samp),
                             div:has(> [role="radiogroup"]),
                             label[for^="ask-opt-"] {
                                 direction: rtl !important;
@@ -367,12 +372,12 @@
                                 font-weight: 100 900;
                                 unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
                             }
-                            [data-ag-rtl-managed="1"]:not(pre):not(code),
-                            .prose, .prose *:not(pre):not(code),
-                            [data-testid="chat-message"], [data-testid="chat-message"] *:not(pre):not(code),
-                            .markdown-body, .markdown-body *:not(pre):not(code),
-                            .leading-relaxed, .leading-relaxed *:not(pre):not(code),
-                            [contenteditable="true"], [contenteditable="true"] *:not(pre):not(code),
+                            [data-ag-rtl-managed="1"]:not(pre):not(code):not(kbd):not(samp),
+                            .prose, .prose *:not(pre):not(code):not(kbd):not(samp),
+                            [data-testid="chat-message"], [data-testid="chat-message"] *:not(pre):not(code):not(kbd):not(samp),
+                            .markdown-body, .markdown-body *:not(pre):not(code):not(kbd):not(samp),
+                            .leading-relaxed, .leading-relaxed *:not(pre):not(code):not(kbd):not(samp),
+                            [contenteditable="true"], [contenteditable="true"] *:not(pre):not(code):not(kbd):not(samp),
                             [data-lexical-text="true"],
                             label[for^="ask-opt-"], textarea[data-testid="ask-question-writein"] {
                                 font-family: \${faFamily}, \${enFamily}, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji" !important;
@@ -389,6 +394,11 @@
                                 line-height: \${lh} !important;
                                 unicode-bidi: plaintext;
                                 text-align: start;
+                            }
+                            [data-ag-rtl-managed="1"][dir="rtl"],
+                            [data-ag-rtl-managed="1"][dir="ltr"] {
+                                unicode-bidi: isolate !important;
+                                text-align: start !important;
                             }
                             \${forceBlock}
                             [dir="rtl"] > ul, [dir="rtl"] > ol,
@@ -694,10 +704,11 @@
                     pollTimer = setInterval(tryBoot, 250);
                 }
             })();`).catch((err) => console.error('Failed to inject clean-room RTL runtime:', err));
-        } catch (err) {
-            console.error('Failed to load bundled Vazirmatn font:', err);
-        }
-    });
+            } catch (err) {
+                console.error('Failed to load bundled Vazirmatn font:', err);
+            }
+        });
+    }
 })(win);
 void win.loadURL(url);
 /* END ANTIGRAVITY PERSIAN RTL */

@@ -27,7 +27,7 @@
         "name": "Antigravity Persian RTL",
         "operatingSystem": "Windows 10, Windows 11, macOS, Linux",
         "applicationCategory": "DeveloperApplication",
-        "softwareVersion": "1.1.0",
+        "softwareVersion": "1.2.0",
         "license": "https://github.com/IRDcode/antigravity-persian-rtl/blob/main/LICENSE",
         "codeRepository": "https://github.com/IRDcode/antigravity-persian-rtl",
         "url": "https://irdcode.github.io/antigravity-persian-rtl/",
@@ -297,7 +297,7 @@
       </p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/IRDcode/antigravity-persian-rtl">View on GitHub</a>
-        <a class="btn" href="https://github.com/IRDcode/antigravity-persian-rtl/blob/main/README.fa.md">راهنمای فارسی (README.fa.md)</a>
+        <a class="btn" href="https://github.com/IRDcode/antigravity-persian-rtl/blob/main/README.fa.md"><span dir="rtl" lang="fa">راهنمای فارسی</span> &middot; <span>README.fa.md</span></a>
       </div>
     </header>
 
@@ -320,11 +320,11 @@
       <div class="grid-2">
         <article class="card">
           <h3>Inline-Code-Aware BiDi + Restore</h3>
-          <p>Clean-room DOM text walker skips leading <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, URLs, and <code>.monaco-editor</code> while saving original <code>dir</code> attributes so <code>Alt+R</code> reverts cleanly.</p>
+          <p>Clean-room DOM text walker skips leading <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, <code>.font-mono</code>, URLs, and relative file paths, locks <code>unicode-bidi: isolate</code> on managed blocks, and preserves original <code>dir</code> attributes so <code>Alt+R</code> reverts cleanly.</p>
         </article>
         <article class="card">
-          <h3>Strict 127.0.0.1 Origin Guard</h3>
-          <p>Both <code>dom-ready</code> injection and <code>console-message</code> persistence enforce <code>^https?://127\.0\.0\.1:\d+</code>, sanitize <code>~/.antigravity-rtl.json</code>, and remove GitHub fetches.</p>
+          <h3>Strict 127.0.0.1 Guard &amp; v2.32+ BaseWindow</h3>
+          <p>Supports both legacy <code>win.webContents</code> and Antigravity <code>v2.32+</code> <code>BaseWindow</code> (<code>hubContents</code>), strictly enforces <code>^https?://127\.0\.0\.1:\d+</code> on injection &amp; config writes, and strips GitHub telemetry.</p>
         </article>
         <article class="card">
           <h3>Auto-Repatch Windows Launcher</h3>
@@ -380,7 +380,7 @@ npm run restore   # Revert cleanly to original app.asar</pre>
 
     <footer>
       <span>MIT License · Clean-room BiDi by <a href="https://github.com/IRDcode">IRDcode</a> · Offline Vazirmatn (OFL-1.1)</span>
-      <span>Verified on Google Antigravity Desktop v2.31.2 (Windows)</span>
+      <span>Verified on Google Antigravity Desktop v2.31.2 (live UI) &amp; v2.32.0 ASAR (Windows)</span>
     </footer>
   </div>
 </body>

@@ -10,7 +10,7 @@ import * as asar from '@electron/asar';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const PATCH_MARKER = '/* ANTIGRAVITY PERSIAN RTL v1.1 */';
+export const PATCH_MARKER = '/* ANTIGRAVITY PERSIAN RTL v1.2 */';
 export const PATCH_END = '/* END ANTIGRAVITY PERSIAN RTL */';
 export const ANCHOR = 'void win.loadURL(url);';
 
