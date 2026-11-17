@@ -153,6 +153,8 @@ Need real-time visibility into how full each session's context window is across 
 
 Both mods use disjoint marker blocks in `dist/utils.js` and preserve `app.asar.bak`, allowing installation, upgrades, or removal in any order without interfering with one another.
 
+If you place both repositories side-by-side in the same parent folder, use **`Launch-All-Antigravity-Mods.bat`** (included in this repository) to verify and re-apply every installed mod together in one click after official Antigravity updates.
+
 ---
 
 ## Development & Verification
