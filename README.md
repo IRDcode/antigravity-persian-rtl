@@ -145,6 +145,16 @@ Every launcher and CLI failure prints an explicit error code, root cause, and ex
 
 ---
 
+## Companion Extension (`antigravity-context-monitor`)
+
+Need real-time visibility into how full each session's context window is across Antigravity's models (`128k` GPT-OSS, `200k` Claude 5.5, and `1M` Gemini / Orchestrator)? Check out the companion extension:
+
+- **[antigravity-context-monitor](https://github.com/IRDcode/antigravity-context-monitor)** — Passive offline Context Window Monitor (`Alt+C` titlebar live meter + native Sidecar AUX pane), 7-category token breakdown (`System`, `MCP`, `Skills`, `Files`, `Terminal`, `Messages`, `Reasoning & Subagents`), prompt cache telemetry, and cross-model handoff overflow guard.
+
+Both mods use disjoint marker blocks in `dist/utils.js` and preserve `app.asar.bak`, allowing installation, upgrades, or removal in any order without interfering with one another.
+
+---
+
 ## Development & Verification
 
 ```bash

@@ -17,6 +17,7 @@ export const ANCHOR = 'void win.loadURL(url);';
 const CURRENT_BLOCK_RE = /\/\* ANTIGRAVITY PERSIAN RTL[\s\S]*?\/\* END ANTIGRAVITY PERSIAN RTL \*\//;
 const HARDENED_BLOCK_RE = /\/\* ANTIGRAVITY RTL HARDENED[\s\S]*?\/\* END ANTIGRAVITY RTL HARDENED \*\//;
 const LEGACY_BLOCK_RE = /\/\* (?:ANTIGRAVITY RTL PATCH|FALIZ RTL CORE|FANTIGRAVITY RTL CORE) \*\/[\s\S]*?\/\* END (?:ANTIGRAVITY RTL PATCH|FALIZ RTL CORE|FANTIGRAVITY RTL CORE) \*\//;
+const CONTEXT_BLOCK_RE = /\/\* ANTIGRAVITY CONTEXT MONITOR[\s\S]*?\/\* END ANTIGRAVITY CONTEXT MONITOR \*\/\r?\n?/;
 
 const ASAR_BLOCK_SIZE = 4 * 1024 * 1024;
 const FONT_REL_PATH = 'dist/Vazirmatn-Variable.woff2';
@@ -219,6 +220,10 @@ function hasAnyRtlComment(code) {
     );
 }
 
+function hasAnyContextComment(code) {
+    return code.includes('/* ANTIGRAVITY CONTEXT MONITOR');
+}
+
 function stripAnyPatch(code) {
     if (CURRENT_BLOCK_RE.test(code)) return code.replace(CURRENT_BLOCK_RE, ANCHOR);
     if (HARDENED_BLOCK_RE.test(code)) return code.replace(HARDENED_BLOCK_RE, ANCHOR);
@@ -226,19 +231,28 @@ function stripAnyPatch(code) {
     return null;
 }
 
+function stripAllKnownMods(code) {
+    let out = stripAnyPatch(code) ?? code;
+    if (CONTEXT_BLOCK_RE.test(out)) {
+        out = out.replace(CONTEXT_BLOCK_RE, '');
+    }
+    return out;
+}
+
 function inspectBackup(backupPath) {
     if (!fs.existsSync(backupPath)) {
-        return { exists: false, state: 'none' };
+        return { exists: false, state: 'none', appVersion: null };
     }
     try {
         const utils = readUtilsFromAsar(backupPath);
         new vm.Script(utils, { filename: 'backup:dist/utils.js' });
-        if (hasAnyRtlComment(utils) || hasAsarEntry(backupPath, FONT_REL_PATH)) {
-            return { exists: true, state: 'patched' };
+        const appVersion = readAppVersionFromAsar(backupPath);
+        if (hasAnyRtlComment(utils) || hasAnyContextComment(utils) || hasAsarEntry(backupPath, FONT_REL_PATH)) {
+            return { exists: true, state: 'patched', appVersion };
         }
-        return { exists: true, state: 'clean' };
+        return { exists: true, state: 'clean', appVersion };
     } catch (err) {
-        return { exists: true, state: 'corrupt', error: err.message };
+        return { exists: true, state: 'corrupt', error: err.message, appVersion: null };
     }
 }
 
@@ -281,6 +295,7 @@ export function getPatchStatus(asarPath) {
             appVersion: readAppVersionFromAsar(asarPath),
             state,
             hasFont,
+            contextMonitorPresent: hasAnyContextComment(utils),
             hasAnchor: utils.includes(ANCHOR) || state !== 'unpatched',
             hasBackup: backupInfo.exists,
             backupState: backupInfo.state,
@@ -525,11 +540,16 @@ export function patchAsar(asarPath, { ifNeeded = false } = {}) {
     }
 
     const backupInfo = inspectBackup(backupPath);
+    const hasSiblingMod = hasAnyContextComment(currentUtils);
     let cleanUtils;
     let needBackupFromCleanBuild = false;
 
     if (status.state === 'unpatched') {
         cleanUtils = currentUtils;
+        if (hasSiblingMod) {
+            const sameVersionClean = backupInfo.state === 'clean' && backupInfo.appVersion === status.appVersion;
+            needBackupFromCleanBuild = !sameVersionClean;
+        }
     } else {
         let backupUtils = null;
         if (backupInfo.state === 'clean') {
@@ -553,7 +573,7 @@ export function patchAsar(asarPath, { ifNeeded = false } = {}) {
     const injectedUtils = buildInjectedUtils(cleanUtils);
     const { fontBuf } = readBundleAssets();
 
-    if (status.state === 'unpatched') {
+    if (status.state === 'unpatched' && !hasSiblingMod) {
         try {
             const bakTmp = `${backupPath}.tmp-${process.pid}`;
             fs.copyFileSync(asarPath, bakTmp);
@@ -564,10 +584,12 @@ export function patchAsar(asarPath, { ifNeeded = false } = {}) {
     } else if (needBackupFromCleanBuild) {
         const bakTmp = `${backupPath}.tmp-${process.pid}`;
         try {
+            const pureCleanUtils = stripAllKnownMods(cleanUtils);
+            new vm.Script(pureCleanUtils, { filename: 'clean-backup:dist/utils.js' });
             rebuildAsarWithOverrides(
                 asarPath,
                 bakTmp,
-                { [UTILS_REL_PATH]: Buffer.from(cleanUtils, 'utf8') },
+                { [UTILS_REL_PATH]: Buffer.from(pureCleanUtils, 'utf8') },
                 new Set([FONT_REL_PATH])
             );
             asar.uncache(bakTmp);
@@ -650,9 +672,49 @@ export function restoreAsar(asarPath, { strictBackup = false } = {}) {
     const backupPath = `${asarPath}.bak`;
     const backupInfo = inspectBackup(backupPath);
     const status = getPatchStatus(asarPath);
+    const currentUtils = status.state !== 'corrupt' ? readUtilsFromAsar(asarPath) : '';
+    const hasSiblingMod = hasAnyContextComment(currentUtils);
+
+    // 0. If Context Monitor sibling mod is active, strip ONLY RTL and preserve clean .bak + sibling mod.
+    if (hasSiblingMod && (status.state === 'patched' || status.state === 'legacy_or_stale')) {
+        const cleanRtlRemoved = stripAnyPatch(currentUtils);
+        if (cleanRtlRemoved) {
+            new vm.Script(cleanRtlRemoved, { filename: UTILS_REL_PATH });
+            const tmpPath = `${asarPath}.restore-${process.pid}`;
+            try {
+                rebuildAsarWithOverrides(
+                    asarPath,
+                    tmpPath,
+                    { [UTILS_REL_PATH]: Buffer.from(cleanRtlRemoved, 'utf8') },
+                    new Set([FONT_REL_PATH])
+                );
+                asar.uncache(tmpPath);
+                const verifiedUtils = asar.extractFile(tmpPath, UTILS_REL_PATH).toString('utf8');
+                if (hasAnyRtlComment(verifiedUtils) || hasAsarEntry(tmpPath, FONT_REL_PATH) || !hasAnyContextComment(verifiedUtils)) {
+                    throw new PatchError('RESTORE_VERIFY_FAILED', 'Sibling-preserving RTL strip verification failed.', {
+                        causeText: 'Unexpected block state after stripping RTL.',
+                        fix: 'Reinstall Antigravity Desktop cleanly.'
+                    });
+                }
+                fs.copyFileSync(tmpPath, asarPath);
+                asar.uncache(asarPath);
+                return {
+                    restored: true,
+                    mode: 'strip_preserve_sibling',
+                    asarPath,
+                    contextMonitorPreserved: true
+                };
+            } catch (err) {
+                throw wrapFsError(err, 'strip RTL while preserving Context Monitor', asarPath);
+            } finally {
+                asar.uncache(tmpPath);
+                fs.rmSync(tmpPath, { force: true });
+            }
+        }
+    }
 
     // 1. Primary path: byte-exact restoration from verified unpatched app.asar.bak.
-    if (backupInfo.state === 'clean') {
+    if (!hasSiblingMod && backupInfo.state === 'clean') {
         try {
             const bakHash = sha256File(backupPath);
             fs.copyFileSync(backupPath, asarPath);

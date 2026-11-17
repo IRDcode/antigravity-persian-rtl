@@ -501,3 +501,32 @@ test('installed Antigravity app.asar copy (when present): preserves unpacked ent
         fs.rmSync(root, { recursive: true, force: true });
     }
 });
+
+test('sibling mod coexistence: preserves Context Monitor block on patch & restore', async () => {
+    const root = tmpDir();
+    try {
+        const siblingHeader = '/* ANTIGRAVITY CONTEXT MONITOR v1.0 */\n(() => {})(win);\n/* END ANTIGRAVITY CONTEXT MONITOR */\n';
+        const withSibling = `module.exports = (win, url) => {\n${siblingHeader}void win.loadURL(url);\n    return win;\n};\n`;
+        const asarPath = await createSampleAsar(root, withSibling);
+
+        const p = patchAsar(asarPath, { ifNeeded: true });
+        assert.equal(p.changed, true);
+        const st = getPatchStatus(asarPath);
+        assert.equal(st.state, 'patched');
+        assert.equal(st.contextMonitorPresent, true);
+        assert.equal(st.backupState, 'clean');
+
+        const patchedUtils = asar.extractFile(asarPath, 'dist/utils.js').toString('utf8');
+        assert.ok(patchedUtils.includes(PATCH_MARKER));
+        assert.ok(patchedUtils.includes('/* ANTIGRAVITY CONTEXT MONITOR v1.0 */'));
+        assert.doesNotThrow(() => new vm.Script(patchedUtils));
+
+        const res = restoreAsar(asarPath);
+        assert.equal(res.restored, true);
+        assert.equal(res.mode, 'strip_preserve_sibling');
+        assert.equal(getPatchStatus(asarPath).state, 'unpatched');
+        assert.equal(getPatchStatus(asarPath).contextMonitorPresent, true);
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
